@@ -20,6 +20,7 @@ import {
 
 const App = ({ signOut }) => {
   const [notes, setNotes] = useState([]);
+  const [mp3Data, setMp3Data] = useState();
 
   useEffect(() => {
     fetchNotes();
@@ -30,6 +31,10 @@ const App = ({ signOut }) => {
     const notesFromAPI = apiData.data.listNotes.items;
     await Promise.all(
       notesFromAPI.map(async (note) => {
+        if (note.audio) {
+          const src = await Storage.get(mp3Data.name);
+          note.audio = src;
+        }
         if (note.image) {
           const url = await Storage.get(note.name);
           note.image = url;
@@ -44,12 +49,15 @@ const App = ({ signOut }) => {
     event.preventDefault();
     const form = new FormData(event.target);
     const image = form.get("image");
+    const audio = mp3Data;
     const data = {
       name: form.get("name"),
       description: form.get("description"),
       image: image.name,
+      audio: mp3Data.name
     };
     if (!!data.image) await Storage.put(data.name, image);
+    if (!!data.audio) await Storage.put(mp3Data.name, mp3Data);
     await API.graphql({
       query: createNoteMutation,
       variables: { input: data },
@@ -95,6 +103,15 @@ const App = ({ signOut }) => {
             type="file"
             style={{ alignSelf: "end" }}
           />
+         <View
+            name="audio"
+            as="input"
+            type="file"
+            id="audio"
+            accept="audio/mp3"
+            onChange={e => setMp3Data(e.target.files[0])}
+            style={{ alignSelf: "end" }}
+          />
           <Button type="submit" variation="primary">
             Create Note
           </Button>
@@ -119,6 +136,18 @@ const App = ({ signOut }) => {
               alt={`visual aid for ${notes.name}`}
               style={{ width: 400 }}
             />
+          )}
+          {note.audio && (
+           <audio
+           controls
+         >
+           <source
+             src={note.audio}
+             type="audio/mpeg"
+           />
+           Your browser does not support
+           the audio element.
+         </audio>
           )}
           <Button variation="link" onClick={() => deleteNote(note)}>
             Delete note
